@@ -4,7 +4,7 @@ import json
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
-
+import pathlib
 
 # src: https://github.com/annts/tf-id_demystified/blob/master/tf_idf_demo.ipynb
 # create a dataframe from a word matrix
@@ -16,27 +16,22 @@ def idf2df(wm, feat_names):
     return(df)
 
 
-def main():
+def generate_idf_weights(dataset_folderpath=None):
     
-    prj_root = os.getcwd()
-    dataset_folderpath= os.path.join(prj_root,'mitre_nav_reports')
     ttp_list_corpus=[]
 
     # extract all mitre ttps in each mitre report
-    for root, dirs, files in os.walk(dataset_folderpath):
-        for filename in files:
-            abs_filepath = os.path.join(root,filename)
-            # print(abs_filepath)
-            with open(abs_filepath,'r') as f:
-                data = data = json.load(f)
+    for filepath in dataset_folderpath.glob('*'):
+        with open(filepath,'r') as f:
+            data = data = json.load(f)
 
-            df = pd.DataFrame(data['techniques'])
-            # extract ttp that only has a score of 1.0
-            df = df.loc[df['score'].isin([1.0])]
-            # extract all ttps to a list in each report
-            ttp_list= df['techniqueID'].tolist()
-            # append all ttps to a string for each report
-            ttp_list_corpus.append(' '.join(ttp_list))
+        df = pd.DataFrame(data['techniques'])
+        # extract ttp that only has a score of 1.0
+        df = df.loc[df['score'].isin([1.0])]
+        # extract all ttps to a list in each report
+        ttp_list= df['techniqueID'].tolist()
+        # append all ttps to a string for each report
+        ttp_list_corpus.append(' '.join(ttp_list))
 
 
     # src: https://github.com/kavgan/nlp-in-practice/blob/master/tf-idf/Keyword%20Extraction%20with%20TF-IDF%20and%20SKlearn.ipynb
@@ -61,10 +56,12 @@ def main():
     #Normalize the weightage from the scsale of 0 to 2
     dataf=round(((df_min_max_scaled-df_min_max_scaled.min())/(df_min_max_scaled.max()-df_min_max_scaled.min()))*2,2)
     dataf.index.name="TTP"
-    dataf.columns=['weight']
+    dataf.columns=['weightage']
 
-    # output the dataframe to json format
-    dataf.to_json('idf_weightage.json',index=True)
+    # return df as dictionary object
+    return dataf.to_dict('dict')['weightage']
 
 if __name__ == "__main__":
-    main()
+    prj_root = pathlib.Path.cwd()
+    dataset_folderpath= prj_root / 'mitre_nav_reports'
+    generate_idf_weights(dataset_folderpath)
